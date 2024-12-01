@@ -1,125 +1,81 @@
-import os
-import math
+# GCodeSplitter
 
-# Configuration Variables
-max_distance = 2000000  # Max pen distance before splitting, in millimeters
-pen_down_command = "S0"  # Example pen down command
-pen_up_command = "S20"   # Example pen up command
-gcode_file = "rock_key.gcode"  # Replace with your G-code file path
-return_to_home_on_pen_change = True  # Set to True to return to home for pen changes, False to stay in place
-home_position = (0, 0)  # Define home position as (X, Y)
+**GCodeSplitter** is a lightweight and versatile tool designed to optimize G-code files for drawbots and similar CNC devices. It splits large G-code drawings into smaller, manageable segments based on user-defined limits, ensuring seamless pen changes and uninterrupted drawing operations.
 
-def parse_gcode(file_path, max_distance, pen_down_command, pen_up_command, return_to_home, home_position):
-    # Read the G-code file
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-    
-    # Initialize variables
-    output_files = []
-    current_file_lines = []
-    cumulative_distance = 0
-    last_position = None  # (x, y)
-    pen_is_down = False
-    file_index = 1
-    units = "mm"  # Default to millimeters
+---
 
-    def save_current_file():
-        nonlocal current_file_lines, file_index, last_position, pen_is_down
-        # Create the new filename with the order number at the end
-        output_path = f"{os.path.splitext(file_path)[0]}_{file_index}.gcode"
-        
-        # Add commands to return to home if enabled
-        if return_to_home and last_position is not None:
-            # Raise pen
-            current_file_lines.append(f"{pen_up_command}\n")
-            # Move to home
-            current_file_lines.append(f"G1 X{home_position[0]} Y{home_position[1]}\n")
-        
-        # Write current file
-        with open(output_path, 'w') as output_file:
-            output_file.writelines(current_file_lines)
-        output_files.append(output_path)
-        file_index += 1
-        current_file_lines = []
+## Features
 
-    def add_starting_commands():
-        nonlocal current_file_lines, last_position, pen_is_down
-        # Add commands to resume from home if enabled
-        if return_to_home and last_position is not None:
-            # Move to last position
-            current_file_lines.append(f"G1 X{last_position[0]} Y{last_position[1]}\n")
-            # Lower pen if it was down
-            if pen_is_down:
-                current_file_lines.append(f"{pen_down_command}\n")
+- **Customizable Pen Limits**: Set a maximum drawing distance to avoid running out of ink mid-drawing.
+- **Optional Pen Change Behavior**:
+  - Stay in place for a manual pen change.
+  - Automatically return to a configurable home position for easier pen replacement and resume drawing precisely where it left off.
+- **Flexible Home Position**: Define the home coordinates to suit your workspace layout.
+- **Support for Multiple Units**: Automatically detects and adjusts for millimeters (default) or inches in G-code files.
+- **Sequential File Output**: Splits files into sequentially numbered segments (e.g., `drawing_1.gcode`, `drawing_2.gcode`), making it easy to execute in order.
+- **Lightweight and Fast**: Process G-code files efficiently without unnecessary overhead.
 
-    for line in lines:
-        stripped = line.strip()
-        
-        # Detect units
-        if stripped.startswith('G20'):
-            units = "inches"
-            current_file_lines.append(line)
-            continue
-        elif stripped.startswith('G21'):
-            units = "mm"
-            current_file_lines.append(line)
-            continue
+---
 
-        # Check for pen down and pen up commands
-        if stripped.startswith(pen_down_command):
-            pen_is_down = True
-            current_file_lines.append(line)
-            continue
-        elif stripped.startswith(pen_up_command):
-            pen_is_down = False
-            current_file_lines.append(line)
-            continue
+## Installation
 
-        # Process pen down movements only
-        if pen_is_down and stripped.startswith('G1'):
-            # Parse the G1 line to extract coordinates
-            x, y = None, None
-            for part in stripped.split():
-                if part.startswith('X'):
-                    x = float(part[1:])
-                elif part.startswith('Y'):
-                    y = float(part[1:])
-            
-            if x is not None and y is not None:
-                if last_position is not None:
-                    # Calculate distance between points
-                    distance = math.sqrt((x - last_position[0])**2 + (y - last_position[1])**2)
-                    
-                    # Convert to consistent units if needed
-                    if units == "inches":
-                        distance *= 25.4  # Convert inches to mm
-                    
-                    cumulative_distance += distance
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/GCodeSplitter.git
+   cd GCodeSplitter
+   ```
 
-                    # If the max distance is exceeded, save the current file and start a new one
-                    if cumulative_distance > max_distance:
-                        save_current_file()
-                        add_starting_commands()
-                        cumulative_distance = 0
-                
-                last_position = (x, y)
+2. Ensure you have Python 3.6 or higher installed.
 
-        # Add the line to the current file
-        current_file_lines.append(line)
+3. Run the script directly:
+   ```bash
+   python GCodeSplitter.py
+   ```
 
-    # Save the final file
-    if current_file_lines:
-        save_current_file()
+---
 
-    return output_files
+## Usage
 
-if __name__ == "__main__":
-    split_files = parse_gcode(
-        gcode_file, 
-        max_distance, 
-        pen_down_command, 
-        pen_up_command, 
-        return_to_home_on_pen_change, 
-        home_position
-    )
-    print(f"Split G-code files created in order: {split_files}")
+1. Place your G-code file in the project directory.
+2. Open the script and configure the following variables at the top:
+   - **`max_distance`**: Maximum drawing distance (in millimeters) before splitting the file.
+   - **`pen_down_command`**: G-code command that lowers the pen (e.g., `S0`).
+   - **`pen_up_command`**: G-code command that raises the pen (e.g., `S20`).
+   - **`return_to_home_on_pen_change`**: Set to `True` to return to a home position during pen changes, or `False` to remain in place.
+   - **`home_position`**: The (X, Y) coordinates for the home position (default: `(0, 0)`).
+3. Run the script:
+   ```bash
+   python GCodeSplitter.py
+   ```
+4. The program will output split files named sequentially (e.g., `rock_key_1.gcode`, `rock_key_2.gcode`, etc.).
+
+---
+
+## Example Configuration
+
+```python
+max_distance = 2000000  # Maximum pen distance in millimeters
+pen_down_command = "S0"  # Command to lower the pen
+pen_up_command = "S20"   # Command to raise the pen
+gcode_file = "rock_key.gcode"  # Path to your G-code file
+return_to_home_on_pen_change = True  # Set to True for home return, False to stay in place
+home_position = (0, 0)  # Home position coordinates
+```
+
+---
+
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+## Contributing
+
+Contributions are welcome! Feel free to open issues or submit pull requests to enhance GCodeSplitter.
+
+---
+
+## Contact
+
+For questions, feedback, or suggestions, feel free to reach out to [your email or GitHub profile].
