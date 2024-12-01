@@ -78,4 +78,4 @@ Contributions are welcome! Feel free to open issues or submit pull requests to e
 
 ## Contact
 
-For questions, feedback, or suggestions, feel free to reach out to [your email or GitHub profile].
+For questions, feedback, or suggestions, feel free to reach out to rickyvaughn2@gmail.com.
