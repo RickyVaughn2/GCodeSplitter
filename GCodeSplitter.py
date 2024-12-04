@@ -17,27 +17,39 @@ def parse_gcode(file_path, max_distance, pen_down_command, pen_up_command, retur
     # Initialize variables
     output_files = []
     current_file_lines = []
+    header_lines = []
     cumulative_distance = 0
     last_position = None  # (x, y)
     pen_is_down = False
     file_index = 1
     units = "mm"  # Default to millimeters
 
+    # Extract header lines (G21, G90, and G1 F####)
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("G21") or stripped.startswith("G90") or stripped.startswith("G1 F"):
+            header_lines.append(line)
+        # Stop extracting header when commands begin
+        if stripped.startswith("G1") and "F" not in stripped:
+            break
+
     def save_current_file():
         nonlocal current_file_lines, file_index, last_position, pen_is_down
         # Create the new filename with the order number at the end
         output_path = f"{os.path.splitext(file_path)[0]}_{file_index}.gcode"
         
-        # Add commands to return to home if enabled
-        if return_to_home and last_position is not None:
-            # Raise pen
-            current_file_lines.append(f"{pen_up_command}\n")
-            # Move to home
-            current_file_lines.append(f"G1 X{home_position[0]} Y{home_position[1]}\n")
-        
-        # Write current file
+        # Add header lines to the file
         with open(output_path, 'w') as output_file:
+            output_file.writelines(header_lines)
+            # Add commands to return to home if enabled
+            if return_to_home and last_position is not None:
+                # Raise pen
+                output_file.write(f"{pen_up_command}\n")
+                # Move to home
+                output_file.write(f"G1 X{home_position[0]} Y{home_position[1]}\n")
+            # Write the rest of the file
             output_file.writelines(current_file_lines)
+        
         output_files.append(output_path)
         file_index += 1
         current_file_lines = []
